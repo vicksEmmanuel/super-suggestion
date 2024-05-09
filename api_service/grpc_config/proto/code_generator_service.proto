@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package code_generator;
+
+service CodeGeneratorService {
+  rpc GenerateCode (GenerateCodeRequest) returns (GenerateCodeResponse) {}
+}
+
+message GenerateCodeRequest {
+  string prompt = 1;
+  string suffix_prompt = 2;
+}
+
+message GenerateCodeResponse {
+  oneof result {
+    GeneratedCode generated_code = 1;
+    ErrorResponse error = 2;
+  }
+}
+
+message GeneratedCode {
+  string code = 1;
+  string prefix = 2;
+  string infill = 3;
+  string suffix = 4;
+}
+
+message ErrorResponse {
+  ErrorCode error_code = 1;
+  string error_message = 2;
+}
+
+enum ErrorCode {
+  UNKNOWN_ERROR = 0;
+  INVALID_REQUEST = 1;
+  MODEL_ERROR = 2;
+}
