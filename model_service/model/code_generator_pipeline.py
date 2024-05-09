@@ -3,6 +3,9 @@ import argparse
 import sys
 import os
 from typing import Any, List, Mapping, Optional
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+sys.path.append(project_root)
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 
@@ -13,12 +16,12 @@ from transformers import (
     LogitsProcessorList,
     Pipeline,
 )
-from lm_eval.generation_pipelines.self_infill_utils import (
+from model.lm_eval.generation_pipelines.self_infill_utils import (
     SelfInfillingLogitsProcessor,
     SelfInfillEndOfFunctionCriteria,
 )
 
-from lm_eval.utils import (
+from model.lm_eval.utils import (
     build_fim_sentinel_dict,
     self_infill_split,
 )

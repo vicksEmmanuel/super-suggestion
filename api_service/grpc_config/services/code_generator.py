@@ -1,6 +1,6 @@
 
-from api_service.controllers.CodeGeneratorController import CodeGeneratorController
-from api_service.grpc.generated.code_generator_service_pb2_grpc import CodeGeneratorServiceServicer
+from grpc_config.generated.code_generator_service_pb2_grpc import CodeGeneratorServiceServicer
+from controllers.CodeGeneratorController import CodeGeneratorController
 
 
 class CodeGeneratorService(CodeGeneratorServiceServicer):

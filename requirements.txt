@@ -10,3 +10,6 @@ huggingface_hub>=0.11.1
 evalplus==0.2.1
 grpcio-tools
 grpcio-reflection
+fastapi
+langchain-community
+langchain

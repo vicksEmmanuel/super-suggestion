@@ -3,7 +3,14 @@ from transformers.generation import LogitsProcessor
 from transformers import StoppingCriteria
 import re
 import copy
-from lm_eval.utils import (
+import os
+import sys
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+sys.path.append(project_root)
+
+from model.lm_eval.utils import (
     build_fim_sentinel_dict,
     self_infill_split,
     compact_lines

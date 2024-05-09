@@ -2,6 +2,7 @@ import os
 import multiprocessing
 import sys
 from fastapi import FastAPI, HTTPException
+import uvicorn.config
 from auth.auth_middleware import AuthMiddleware
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
@@ -45,3 +46,4 @@ if __name__ == "__main__":
     p = multiprocessing.Process(target=start_uvicorn_server)
     p.start()
     start_grpc_server()
+    uvicorn.join()

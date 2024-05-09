@@ -20,18 +20,16 @@ import grpc
 
 
 def start_grpc_server():
+    isProduction = os.getenv("ENVIRONMENT") == 'production'
     auth_interceptor = AuthInterceptor(
-        []
-        # ['/code_generator.CodeGeneratorService/GenerateCode']  # The endpoints that should be un-protected
+        [] if isProduction else ['/CodeGeneratorService/GenerateCode']
     )
+
 
     logging.basicConfig(level=logging.INFO)
     logging_interceptor = LoggingInterceptor()
     # Create a gRPC server
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10),
-                         interceptors=[
-                             #  auth_interceptor,  # Disabled for development purposes
-                             logging_interceptor])
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10), interceptors=[ auth_interceptor, logging_interceptor ])
     # Add the services to the server
     add_CodeGeneratorServiceServicer_to_server(CodeGeneratorService(), server)
     SERVICE_NAMES = (

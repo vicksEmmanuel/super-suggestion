@@ -2,11 +2,17 @@ import torch
 import argparse
 import sys
 import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+sys.path.append(project_root)
+
 from langchain import PromptTemplate, LLMChain
 from langchain.llms import HuggingFacePipeline
 from langchain.memory import ConversationBufferMemory
-from code_generator_pipeline import CodeGeneratorPipeline
-from lm_eval.utils import build_fim_sentinel_dict, self_infill_split
+from model.lm_eval.utils import build_fim_sentinel_dict, self_infill_split
+from model.code_generator_pipeline import CodeGeneratorPipeline
+
 
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 
@@ -16,7 +22,7 @@ from transformers import (
     StoppingCriteriaList,
     LogitsProcessorList
 )
-from lm_eval.generation_pipelines.self_infill_utils import (
+from model.lm_eval.generation_pipelines.self_infill_utils import (
     SelfInfillingLogitsProcessor,
     SelfInfillEndOfFunctionCriteria,
 )
@@ -53,6 +59,7 @@ def setup_generation_config(
 
 
 def using_lanchain_memory(args):
+
     # Load the tokenizer and model
     tokenizer = AutoTokenizer.from_pretrained(
         args.model, 
@@ -68,18 +75,15 @@ def using_lanchain_memory(args):
         # device_map = "auto"
     ).to(args.device)
 
-    print(f"Args {args.prompt_file}")
-
     # Read provided prompt from a file
-    prompt = args.prompt_file
-    suffix_prompt = args.suffix_prompt_file.strip() if args.suffix_prompt_file else ""
+    prompt = f"""<code>{args.prompt}"""
+    suffix_prompt = args.suffix_prompt.strip() if args.suffix_prompt else ""
     
     pipeline = CodeGeneratorPipeline(
         model=model,
         tokenizer=tokenizer,
         self_infill_tau = args.self_infill_tau
     )
-
     
     # Create a ConversationBufferMemory for context-aware generation
     memory = ConversationBufferMemory(
@@ -93,10 +97,10 @@ def using_lanchain_memory(args):
     memory.save_context({"prompt": prompt}, {"code": code["code"]})
 
 
-    code = code["code"]
     prefix = code["prefix"]
     infill = code["infill"]
     suffix = code["suffix"]
+    code = code["code"]
 
     return {
         "prefix": prefix,
@@ -106,9 +110,8 @@ def using_lanchain_memory(args):
     }
 
 
-
 class  GenerateCodeModel:
-    def __init__(self,prompt, suffix_prompt):
+    def __init__(self, prompt, suffix_prompt):
         self.model = 'codellama/CodeLlama-7b-hf'
         self.device = "cpu"
         self.self_infill_tau = 0.25
@@ -116,43 +119,12 @@ class  GenerateCodeModel:
         self.suffix_prompt = suffix_prompt
 
     def generate_code(self):
-        return using_lanchain_memory(self)
+        parser = argparse.ArgumentParser(description='Generate code using the specified model.')
+        parser.add_argument('--model', type=str, default=self.model, help='Model to use for code generation.')
+        parser.add_argument('--device', type=str, default=self.device, help='Device to run the model on.')
+        parser.add_argument('--self_infill_tau', type=float, default=self.self_infill_tau, help='Self-infill temperature.')
+        parser.add_argument('--prompt', type=str, default=self.prompt, help='Prompt for code generation.')
+        parser.add_argument('--suffix_prompt', type=str, default=self.suffix_prompt, help='Suffix prompt for code generation.')
 
-if __name__ == "__main__":
-    """
-    Parse command-line arguments.
-    """
-    parser = argparse.ArgumentParser(description='Self-infilling code generation')
-    parser.add_argument('--model', type=str, default="codellama/CodeLlama-7b-hf", help='HF Model name or path')
-    parser.add_argument('--device', type=str, default="cuda", help='Device to use (cuda or cpu)')
-    parser.add_argument('--self-infill-tau', type=float, default=0.25, help='threshold tau for self-infilling interruption')
-    parser.add_argument('--prompt-file', type=str, default=None, help='File path for the user prompt')
-    parser.add_argument('--suffix-prompt-file', type=str, default=None, help='File path for the custom suffix prompt')
-    args = parser.parse_args()
-
-    # Read provided prompt from a file
-    if args.prompt_file:
-        try:
-            with open(args.prompt_file, "r") as f:
-                args.prompt = f.read()
-        except IOError:
-            print(f"Error: Could not read file {args.prompt_file}")
-            sys.exit(1)
-    else:
-        print("No user prompt provided. Exiting.")
-        sys.exit(1)
-
-    # Read provided suffix prompt from the specified file
-    if args.suffix_prompt_file:
-        try:
-            with open(args.suffix_prompt_file, "r") as f:
-                args.suffix_prompt = f.read().strip()
-        except IOError:
-            print(f"Error: Could not read file {args.suffix_prompt_file}")
-            sys.exit(1)
-    else:
-        print("No user prompt provided. Defaults to empty.")
-        args.suffix_prompt = ""
-
-
-    using_lanchain_memory(args)
+        args = parser.parse_args()
+        return using_lanchain_memory(args)
