@@ -6,10 +6,11 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 sys.path.append(project_root)
 
+from grpc_config.services.code_generator import CodeGeneratorService
 from grpc_config.interceptors.logging_interceptor import LoggingInterceptor
 from auth.auth_interceptor import AuthInterceptor
 from grpc_reflection.v1alpha import reflection
-from grpc_config.generated.code_generator_service_pb2_grpc import CodeGeneratorService, add_CodeGeneratorServiceServicer_to_server
+from grpc_config.generated.code_generator_service_pb2_grpc import add_CodeGeneratorServiceServicer_to_server
 from grpc_config.generated.code_generator_service_pb2 import GenerateCodeRequest, GenerateCodeResponse
 from grpc_config.generated import  code_generator_service_pb2
 from util.logging import logger
