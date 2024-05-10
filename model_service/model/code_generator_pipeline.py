@@ -27,19 +27,27 @@ from model.lm_eval.utils import (
 )
 
 class CodeGeneratorPipeline(Pipeline):
-
     def __init__(
         self,
-        model: AutoModelForCausalLM,
-        tokenizer: AutoTokenizer,
+        model_name: str,
+        device: str,
         self_infill_tau: str,
         *args: Any,
         **kwargs: Any,
     ):
-        super().__init__(tokenizer=tokenizer, model=model, *args, **kwargs)
+        # Load the tokenizer and model
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_name, trust_remote_code=True, use_fast=False
+        )
+        if not tokenizer.pad_token:
+            tokenizer.pad_token = tokenizer.eos_token
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, trust_remote_code=True, # device_map = "auto"
+        ).to(device)
         self.model = model
         self.tokenizer = tokenizer
         self.self_infill_tau = self_infill_tau
+        super().__init__(tokenizer=tokenizer, model=model, *args, **kwargs)
 
     def _sanitize_parameters(self, **pipeline_parameters):
         preprocess_kwargs = {}

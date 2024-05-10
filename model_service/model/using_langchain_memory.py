@@ -59,29 +59,13 @@ def setup_generation_config(
 
 
 def using_lanchain_memory(args):
-
-    # Load the tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model, 
-        trust_remote_code=True, 
-        use_fast=False
-    )
-    if not tokenizer.pad_token:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model, 
-        trust_remote_code=True, 
-        # device_map = "auto"
-    ).to(args.device)
-
     # Read provided prompt from a file
     prompt = f"""<code>{args.prompt}"""
     suffix_prompt = args.suffix_prompt.strip() if args.suffix_prompt else ""
     
     pipeline = CodeGeneratorPipeline(
-        model=model,
-        tokenizer=tokenizer,
+        model_name = args.model,
+        device="cpu",
         self_infill_tau = args.self_infill_tau
     )
     

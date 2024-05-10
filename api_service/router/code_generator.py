@@ -1,22 +1,57 @@
+import json
+from google.protobuf.json_format import MessageToDict
 import asyncio
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
+from api_service.controllers.CodeGeneratorController import CodeGeneratorController
+from api_service.grpc_config.generated.code_generator_service_pb2 import GenerateCodeRequest
+
 router = APIRouter()
 
 
+
 @router.post("/stream")
-async def stream_data(request: Request):
-    """An example of a streaming response. This endpoint will return
-    a stream of numbers from 0 to num, with a 1 second pause
-    between each number."""
+async def test_api(request: Request):
     body = await request.json()
-    num = body.get('num', 10)  # get the number of items to generate from the request body, default is 10
+    prompt = body.get('prompt', "")
+    suffix_prompt = body.get('suffix_prompt', "")
+    req = GenerateCodeRequest(
+        prompt=prompt,
+        suffix_prompt=suffix_prompt
+    )
 
-    async def content_generator():
-        """Generator function to generate the stream of numbers"""
-        for i in range(num):
-            yield str(i) + "\n"
-            await asyncio.sleep(0.1)  # pause for a 0.1 seconds
+    async def generate_response():
+        response = CodeGeneratorController().generate_code(request=req)
+        response_dict = MessageToDict(response, preserving_proto_field_name=True)
+        yield f"data: {json.dumps(response_dict)}\n\n"
 
-    return StreamingResponse(content_generator(), media_type='text/plain')
+    # /// On Client
+    # const eventSource = new EventSource('/test');
+
+    # eventSource.onmessage = function(event) {
+    #     const data = JSON.parse(event.data);
+    #     console.log('Received data:', data);
+    #     // Process the received data as needed
+    # };
+
+    # eventSource.onerror = function(error) {
+    #     console.error('Error:', error);
+    # };
+
+    return StreamingResponse(generate_response(), media_type='text/event-stream')
+
+@router.post("/test")
+async def test_api(request: Request):
+    body = await request.json()
+    prompt = body.get('prompt', "")
+    suffix_prompt = body.get('suffix_prompt', "")
+
+    req = GenerateCodeRequest(
+        prompt=prompt,
+        suffix_prompt=suffix_prompt
+    )
+    response = CodeGeneratorController().generate_code(request=req)
+    response_dict = MessageToDict(response, preserving_proto_field_name=True)
+    return {"response": response_dict}
+
