@@ -171,3 +171,11 @@ logs
 .ruff_cache
 
 ds1000_data/
+
+
+vscode_ext/super-suggestion/out
+vscode_ext/super-suggestion/dist
+vscode_ext/super-suggestion/node_modules
+node_modules
+.vscode-test/
+*.vsix
