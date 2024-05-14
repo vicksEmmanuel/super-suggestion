@@ -14,5 +14,7 @@ fastapi
 langchain-community
 langchain
 boto3
-pymilvus
+pymilvus==2.3.6
 textract
+huggingface_hub
+python-magic 

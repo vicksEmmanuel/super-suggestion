@@ -1,4 +1,3 @@
-from controllers.EmbeddingsController import EmbeddingsController
 import json
 from fastapi import APIRouter, Request, Form, UploadFile
 from api_service.controllers.FileController import FileController
@@ -37,20 +36,3 @@ async def download_code_workspace(
     fileControls = FileController()
     fileControls.download_code_workspace_folder(workspace_folder, key)
     return {"response": "Success"}
-
-
-@router.get("/testing")
-async def testing(
-    request: Request
-):
-    emb = EmbeddingsController()
-    emb.create_collection_in_milvus()
-
-    # Ensure index creation and wait for it to build
-    emb.create_index_for_collection()
-    emb.wait_for_index_building_complete()
-
-    # Download workspace and create embeddings
-    emb.download_workspace_and_create_embeddings("./file_manager.py", "super-suggestion")
-
-    

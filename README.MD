@@ -198,3 +198,6 @@ If you find our work helpful, please cite:
 cd grpc && python -m grpc_tools.protoc -I./proto --python_out=./generated --grpc_python_out=./generated ./proto/code_generator_service.proto
 
 cd api_service/grpc_config && python -m grpc_tools.protoc -I./proto --python_out=./generated --grpc_python_out=./generated --pyi_out=./generated ./proto/code_generator_service.proto
+
+
+`huggingface-cli login`
