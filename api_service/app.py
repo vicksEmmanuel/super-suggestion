@@ -33,7 +33,7 @@ def make_app():
 
     app.add_middleware(AuthMiddleware, exclude_routes=[])
 
-    app.include_router(code_generator.router)
+    app.include_router(code_generator.router, prefix="/code")
     app.include_router(file_manager.router, prefix="/file")
 
     return app

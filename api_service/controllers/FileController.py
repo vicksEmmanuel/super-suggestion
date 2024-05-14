@@ -46,5 +46,5 @@ class FileController:
         objects = self.s3_client.list_objects(Bucket=self.s3_bucket_name, Prefix=key)
         for obj in objects.get('Contents', []):
             if obj['Key'].endswith(file_name):
-                return obj['Key']
+                return os.path.relpath(obj['Key'], key)
         return None

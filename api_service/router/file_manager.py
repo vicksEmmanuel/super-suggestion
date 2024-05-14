@@ -37,23 +37,3 @@ async def download_code_workspace(
     fileControls = FileController()
     fileControls.download_code_workspace_folder(workspace_folder, key)
     return {"response": "Success"}
-
-
-@router.get("/create_embeddings_first_time")
-async def create_embeddings_first_time(
-    request: Request
-):
-    emb = EmbeddingsController()
-    emb.create_collection_in_milvus()
-
-    # Ensure index creation and wait for it to build
-    emb.create_index_for_collection()
-    emb.wait_for_index_building_complete()
-
-    x = emb.check_if_embedding_exists("super-suggestion")
-    print(f"Embedding exists: {x}")
-
-    # Download workspace and create embeddings
-    # emb.download_workspace_and_create_embeddings("./file_manager.py", "super-suggestion")
-
-    

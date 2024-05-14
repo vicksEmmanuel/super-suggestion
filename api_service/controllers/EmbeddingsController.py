@@ -22,6 +22,7 @@ class EmbeddingsController:
         self.max_length = 8192
         self.tokenizer = AutoTokenizer.from_pretrained("intfloat/multilingual-e5-large")
         self.model = AutoModel.from_pretrained("intfloat/multilingual-e5-large")
+        self.create_index_for_collection()
 
     def create_collection_in_milvus(self, dim=1024):
         if self.collection_name in utility.list_collections():
@@ -30,7 +31,8 @@ class EmbeddingsController:
             fields = [
                 FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
                 FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=dim),
-                FieldSchema(name='key', dtype=DataType.VARCHAR, is_primary=False, auto_id=False, max_length=256),  # Specify the max_length
+                FieldSchema(name='key', dtype=DataType.VARCHAR, is_primary=False, auto_id=False, max_length=256),
+                FieldSchema(name='chunk_text', dtype=DataType.VARCHAR, is_primary=False, auto_id=False, max_length=self.max_length + 500)  # Change data type to VARCHAR
             ]
             schema = CollectionSchema(fields=fields, description="Embeddings")
             self.collection = Collection(name=self.collection_name, schema=schema)
@@ -47,10 +49,12 @@ class EmbeddingsController:
         print(f" collection: {self.collection}")
 
         if self.collection.has_index():
+            self.collection.release()
             self.collection.drop_index()
 
         self.collection.create_index(field_name=field_name, index_params=index_params)
         print(f"Index created for field '{field_name}' in collection '{self.collection.name}'.")
+        self.collection.load() 
 
     def wait_for_index_building_complete(self):
         print("Waiting for index building to complete...")
@@ -91,22 +95,35 @@ class EmbeddingsController:
         # Create collection
         self.create_collection_in_milvus(dim=self.embedding_dim)
         # Create embeddings
-        embeddings = []
-        keys = []
         for root, _, files in os.walk(workspace_path):
             for file in files:
                 file_path = os.path.join(root, file)
                 text = self.extract_text_from_file(file_path)
                 if text:
+                    embeddings = []
+                    keys = []
+                    chunk_texts = []
                     chunks = self.chunk_text(text)
                     for i, chunk in enumerate(chunks, start=1):
                         print(f"Processing chunk {i}/{len(chunks)} from {file_path}...")
                         embedding = self.generate_bert_embedding(chunk)
                         embeddings.append(embedding)
-                        keys.append(f"{key}_{i}")
-        
-        self.insert_embeddings_to_milvus(embeddings, keys)
+                        keys.append(f"{key}_{file_path}_{i}")  # Include file path in the key
+                        chunk_texts.append(chunk)
+
+                    data = [{"embedding": emb, "key": k, "chunk_text": text} for emb, k, text in zip(embeddings, keys, chunk_texts)]
+                    self.insert_embeddings_to_milvus(data)
         return {"response": "Success"}
+
+    def split_long_chunk(self, chunk):
+        max_length = self.max_length
+        split_chunks = []
+        while len(chunk) > max_length:
+            split_chunks.append(chunk[:max_length])
+            chunk = chunk[max_length:]
+        if chunk:
+            split_chunks.append(chunk)
+        return split_chunks
 
     def extract_text_from_file(self, file_path):
         try:
@@ -297,7 +314,7 @@ class EmbeddingsController:
             # Check if the file extension is in the coding_extensions dictionary
             if extension in coding_extensions:
                 with open(file_path, 'r', encoding='utf-8') as file:
-                    text = file.read()
+                    text = f"{file_path}\n{file.read()}"
                 print(f"Coding language/framework: {coding_extensions[extension]}")
             else:
                 # Determine the file type using magic
@@ -307,16 +324,16 @@ class EmbeddingsController:
                 # Extract text based on the file type
                 if file_type == 'text/plain':
                     with open(file_path, 'r', encoding='utf-8') as file:
-                        text = file.read()
+                        text = f"{file_path}\n{file.read()}"
                 elif extension in other_extensions:
-                   text = textract.process(file_path).decode('utf-8')
+                   text = f"{file_path}\n{textract.process(file_path).decode('utf-8')}"
 
                 elif file_type.startswith('text/'):
                     with open(file_path, 'r', encoding='utf-8') as file:
-                        text = file.read()
+                        text = f"{file_path}\n{file.read()}"
                 else:
                     # Use textract for non-text files
-                    text = textract.process(file_path).decode('utf-8')
+                    text = f"{file_path}\n{textract.process(file_path).decode('utf-8')}"
 
             return text.strip()
         except Exception as e:
@@ -324,31 +341,31 @@ class EmbeddingsController:
             return ""
         
     def chunk_text(self, text):
-        words = text.split()
         max_length = self.max_length - 2  # Accounting for special tokens
         chunks = []
-        current_chunk = []
+        start = 0
+        end = max_length
 
-        for word in words:
-            if len(current_chunk) + len(word.split()) <= max_length:
-                current_chunk.append(word)
+        while start < len(text):
+            # Find the last space within the max_length range
+            last_space = text.rfind(" ", start, end)
+            if last_space == -1:
+                # If no space is found, split at max_length
+                chunks.append(text[start:end])
+                start = end
+                end += max_length
             else:
-                chunk = " ".join(current_chunk)
-                chunks.append(chunk)
-                current_chunk = [word]
+                # Split at the last space
+                chunks.append(text[start:last_space])
+                start = last_space + 1
+                end = start + max_length
 
-        if current_chunk:
-            chunk = " ".join(current_chunk)
-            chunks.append(chunk)
+        if start < len(text):
+            chunks.append(text[start:])
 
-        print(f" Chunks {chunks}")
         return chunks
 
-    def insert_embeddings_to_milvus(self, embeddings, keys):
-
-        data = []
-        for embedding, key in zip(embeddings, keys):
-            data.append({"embedding": embedding, "key": key})
+    def insert_embeddings_to_milvus(self, data):
 
         try:
             mr = self.collection.insert(data)
@@ -359,4 +376,37 @@ class EmbeddingsController:
             raise
     
     def check_if_embedding_exists(self, key):
-        return self.collection.has_key(key)
+        try:
+            result = self.collection.query(expr=f"key == '{key}'", output_fields=["key"], limit=1)
+            return len(result) > 0
+        except Exception as e:
+            print(f"Error checking if embedding exists for key {key}: {str(e)}")
+            return False
+
+    def embedding_retrieval(self, text, key):
+        if self.collection is None:
+            self.collection = Collection(name=self.collection_name)
+            return
+
+        question_embedding = self.generate_bert_embedding(text)
+        search_params = {"metric_type": "L2", "params": {"nprobe": 10}}
+        top_k = 4
+        output_fields = ["key", "chunk_text"]
+
+        results = self.collection.search(
+            data=[question_embedding],
+            anns_field="embedding",
+            param=search_params,
+            limit=top_k,
+            output_fields=output_fields,
+            search_params={"params": {"nprobe": 10}, "anns_field": "embedding", "limit": top_k, "output_fields": output_fields, "params": {"nprobe": 10}, "filters": [{"key": key}]}
+        )
+
+        compiled_result = ""
+
+        for result in results:
+            for r in result:
+                chunk_text = r.entity.get("chunk_text")
+                compiled_result += chunk_text
+
+        return compiled_result
