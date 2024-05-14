@@ -9,6 +9,7 @@ from transformers import AutoTokenizer, AutoModel
 
 class EmbeddingsController:
     def __init__(self):
+        print(f" Connection host {os.getenv('MILVUS_HOST')}")
         connections.connect(
             host=os.getenv("MILVUS_HOST"),
             port=os.getenv("MILVUS_PORT")
@@ -79,16 +80,24 @@ class EmbeddingsController:
         keys = []
         for root, _, files in os.walk(workspace_path):
             for file in files:
-                if file.endswith(".txt"):
-                    with open(os.path.join(root, file), "r") as f:
-                        text = f.read()
-                        chunks = self.chunk_text(text)
-                        for i, chunk in enumerate(chunks):
-                            embedding = self.generate_bert_embedding(chunk)
-                            embeddings.append(embedding)
-                            keys.append(f"{key}_{i}")
+                file_path = os.path.join(root, file)
+                text = self.extract_text_from_file(file_path)
+                if text:
+                    chunks = self.chunk_text(text)
+                    for i, chunk in enumerate(chunks):
+                        embedding = self.generate_bert_embedding(chunk)
+                        embeddings.append(embedding)
+                        keys.append(f"{key}_{i}")
         self.insert_embeddings_to_milvus(embeddings, keys)
         return {"response": "Success"}
+
+    def extract_text_from_file(self, file_path):
+        try:
+            text = textract.process(file_path).decode('utf-8')
+            return text.strip()
+        except Exception as e:
+            print(f"Error extracting text from {file_path}: {str(e)}")
+            return None
 
     def chunk_text(self, text, chunk_size=None):
         if chunk_size is None:

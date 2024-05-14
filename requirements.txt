@@ -13,3 +13,6 @@ grpcio-reflection
 fastapi
 langchain-community
 langchain
+boto3
+pymilvus
+textract
