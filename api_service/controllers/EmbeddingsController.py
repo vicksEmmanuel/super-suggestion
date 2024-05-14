@@ -357,3 +357,6 @@ class EmbeddingsController:
         except Exception as e:
             print(f"Error inserting data into Milvus: {str(e)}")
             raise
+    
+    def check_if_embedding_exists(self, key):
+        return self.collection.has_key(key)

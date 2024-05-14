@@ -41,3 +41,10 @@ class FileController:
         
         # return download path
         return workspace_folder
+    
+    def find_in_workspace_folder(self, key: str, file_name: str):
+        objects = self.s3_client.list_objects(Bucket=self.s3_bucket_name, Prefix=key)
+        for obj in objects.get('Contents', []):
+            if obj['Key'].endswith(file_name):
+                return obj['Key']
+        return None
