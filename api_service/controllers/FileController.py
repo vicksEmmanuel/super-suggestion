@@ -38,3 +38,6 @@ class FileController:
             local_file_path = os.path.join(workspace_folder, file_path)
             os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
             self.s3_client.download_file(self.s3_bucket_name, obj['Key'], local_file_path)
+        
+        # return download path
+        return workspace_folder
