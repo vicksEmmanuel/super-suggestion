@@ -10,7 +10,7 @@ sys.path.append(project_root)
 
 from util.util import load_env
 from grpc_server import start_grpc_server
-from router import code_generator
+from router import code_generator, file_manager
 from starlette.responses import JSONResponse
 import uvicorn
 
@@ -31,8 +31,10 @@ def make_app():
             content={"detail": exc.detail},
         )
 
-    app.include_router(code_generator.router)
     app.add_middleware(AuthMiddleware, exclude_routes=[])
+
+    app.include_router(code_generator.router)
+    app.include_router(file_manager.router, prefix="/file")
 
     return app
 
