@@ -56,7 +56,7 @@ async def test_api(request: Request):
     response_dict = MessageToDict(response, preserving_proto_field_name=True)
     return {"response": response_dict}
 
-@router.get("/searching")
+@router.post("/searching")
 async def testing(
     request: Request
 ):
