@@ -85,7 +85,7 @@ class EmbeddingsController:
         # input_text = f'{text}'[:max_length]
         input_text = f'{text}'
         
-        batch_dict = self.tokenizer(input_text, padding=True, truncation=True, return_tensors='pt')
+        batch_dict = self.tokenizer(input_text, padding=True, max_length=1000, truncation=False, return_tensors='pt')
         outputs = self.model(**batch_dict)
         embeddings = self.average_pool(outputs.last_hidden_state, batch_dict['attention_mask'])
         embeddings = F.normalize(embeddings, p=2, dim=1)
